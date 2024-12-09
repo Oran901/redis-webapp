@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels:
+    {{- include "commonLabels" . | nindent 4 }}
+data:
+  init.sh: |
+    #!/bin/bash
+    apt update && apt-get install -y redis-tools
+    echo "Connecting to Redis..."
+    redis-cli -h $REDIS_HOST -p $REDIS_PORT -a $REDIS_PASSWD ping
+    sleep 999999999999

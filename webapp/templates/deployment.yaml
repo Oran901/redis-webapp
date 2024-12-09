@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-deployment
+  labels:
+    {{- include "commonLabels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "commonLabels" . | indent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "commonLabels" . | indent 8 }}
+    spec:
+      containers:
+      - name: {{ .Values.image.repository }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            cp /app/init.sh /tmp/init.sh && 
+            chmod +x /tmp/init.sh &&
+              /tmp/init.sh
+        env:
+          {{- if .Values.redis.enabled }}
+          - name: REDIS_HOST
+            value: {{ .Release.Name }}-redis-replicas
+          - name: REDIS_PORT
+            value: {{ .Values.redis.port | default "6379" | quote }}
+          {{- end }}
+          - name: environment
+            value: {{ .Values.image.env.environment }}
+          - name: REDIS_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Release.Name }}-redis
+                key: redis-password
+        volumeMounts:
+          - name: app-config
+            mountPath: /app
+        ports:
+        - containerPort: {{ .Values.service.port }}
+        resources:
+          requests:
+            cpu: {{ .Values.resources.requests.cpu | quote }}
+            memory: {{ .Values.resources.requests.memory | quote }}
+          limits:
+            cpu: {{ .Values.resources.limits.cpu | quote }}
+            memory: {{ .Values.resources.limits.memory | quote }}
+      volumes:
+        - name: app-config
+          configMap: 
+            name: {{ .Release.Name }}-config
